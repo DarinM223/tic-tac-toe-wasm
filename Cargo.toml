@@ -1,5 +1,5 @@
 [package]
-name = "sample_wasm"
+name = "tic_tac_toe_wasm"
 version = "0.1.0"
 authors = ["Darin Minamoto <darinm223@gmail.com>"]
 
