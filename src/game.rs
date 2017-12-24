@@ -61,9 +61,14 @@ impl Board {
         let mut best = -1000;
         let mut best_move = None;
 
+        let opposite_marking = match player_marking {
+            CellMarking::X => CellMarking::O,
+            CellMarking::O => CellMarking::X,
+        };
+
         for m in moves {
             self.apply_move(&m);
-            let move_value = minimax(self, 0, player_marking, false);
+            let move_value = minimax(self, 0, opposite_marking, false);
             self.undo_move(&m);
 
             if move_value > best {
