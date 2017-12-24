@@ -40,6 +40,12 @@ impl Board {
         }
     }
 
+    pub fn reset(&mut self) {
+        for cell in self.cells.iter_mut() {
+            cell.mark = None;
+        }
+    }
+
     pub fn apply_move(&mut self, m: &Move) {
         self.get_cell_mut(&m.position).map(|ref mut cell| {
             cell.mark = Some(m.marking);
