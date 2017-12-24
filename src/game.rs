@@ -8,7 +8,7 @@ pub enum CellMarking {
     O,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cell {
     mark: Option<CellMarking>,
 }
@@ -19,6 +19,7 @@ pub struct Move {
     pub marking: CellMarking,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Board {
     cells: Vec<Cell>,
     row_size: usize,
@@ -52,6 +53,10 @@ impl Board {
     }
 
     pub fn next_move(&mut self, player_marking: CellMarking) -> Option<Move> {
+        if self.has_won().is_some() {
+            return None;
+        }
+
         let moves = self.moves(player_marking);
         let mut best = -1000;
         let mut best_move = None;
@@ -111,6 +116,23 @@ impl Board {
             .or_else(|| self.check_diagonals())
     }
 
+    pub fn to_string(&self) -> String {
+        let mut s = Vec::with_capacity(self.row_size * self.col_size + self.col_size);
+        for row in 0..self.col_size {
+            for col in 0..self.row_size {
+                let cell = self.get_cell(&(row, col)).unwrap();
+                let ch = match cell.mark {
+                    Some(CellMarking::X) => b'X',
+                    Some(CellMarking::O) => b'O',
+                    None => b'_',
+                };
+                s.push(ch);
+            }
+            s.push(b'\n');
+        }
+        String::from_utf8(s).unwrap()
+    }
+
     fn check_line<F>(&self, size1: usize, size2: usize, cell_fn: F) -> Option<CellMarking>
     where
         F: Fn(usize, usize) -> (usize, usize),
@@ -121,9 +143,9 @@ impl Board {
             for b in 0..size2 {
                 let pos = cell_fn(a, b);
                 let cell_marking = self.get_cell(&pos).and_then(|cell| cell.mark);
-                if marking.is_none() {
+                if cell_marking.is_some() && marking.is_none() {
                     marking = cell_marking;
-                } else if marking != cell_marking {
+                } else if cell_marking.is_none() || marking != cell_marking {
                     break;
                 }
                 count += 1;
@@ -158,9 +180,9 @@ impl Board {
             let col = start.1 as i32 + offset;
             let position = (row, col as usize);
             let cell_marking = self.get_cell(&position).and_then(|cell| cell.mark);
-            if diagonal_marking.is_none() {
+            if cell_marking.is_some() && diagonal_marking.is_none() {
                 diagonal_marking = cell_marking;
-            } else if diagonal_marking != cell_marking {
+            } else if cell_marking.is_none() || diagonal_marking != cell_marking {
                 break;
             }
             count += 1;
@@ -173,15 +195,12 @@ impl Board {
     }
 }
 
-fn minimax(board: &mut Board, depth: usize, player_marking: CellMarking, is_max: bool) -> i32 {
-    match board.has_won() {
-        Some(marking) if player_marking == marking => {
-            return 10;
+fn minimax(board: &mut Board, depth: i32, player_marking: CellMarking, is_max: bool) -> i32 {
+    if let Some(marking) = board.has_won() {
+        if (player_marking == marking && !is_max) || (player_marking != marking && is_max) {
+            return -10 - depth;
         }
-        Some(marking) if player_marking != marking => {
-            return -10;
-        }
-        _ => {}
+        return 10 - depth;
     }
 
     let moves = board.moves(player_marking);
@@ -275,9 +294,42 @@ mod tests {
             mark: Some(CellMarking::O),
         };
         let mut board = Board::with_dimensions(3, 5);
-        *board.get_cell_mut(&(4, 0)).unwrap() = mark;
-        *board.get_cell_mut(&(3, 1)).unwrap() = mark;
-        *board.get_cell_mut(&(2, 2)).unwrap() = mark;
+        *board.get_cell_mut(&(0, 2)).unwrap() = mark;
+        *board.get_cell_mut(&(1, 1)).unwrap() = mark;
+        *board.get_cell_mut(&(2, 0)).unwrap() = mark;
         assert_eq!(board.has_won(), Some(CellMarking::O));
+    }
+
+    #[test]
+    fn test_has_won_diagonal_incomplete() {
+        let mark = Cell {
+            mark: Some(CellMarking::X),
+        };
+        let mut board = Board::with_dimensions(5, 3);
+        *board.get_cell_mut(&(0, 0)).unwrap() = mark;
+        *board.get_cell_mut(&(2, 2)).unwrap() = mark;
+        assert_eq!(board.has_won(), None);
+    }
+
+    #[test]
+    fn test_next_move_doesnt_modify_board() {
+        let mut board = Board::with_dimensions(3, 3);
+        let saved_board = board.clone();
+
+        board.next_move(CellMarking::X);
+        board.next_move(CellMarking::O);
+
+        assert_eq!(board, saved_board);
+    }
+
+    #[test]
+    fn test_index_to_pos() {
+        let board = Board::with_dimensions(3, 3);
+        for row in 0..board.col_size {
+            for col in 0..board.row_size {
+                let index = board.cell_index(&(row, col));
+                assert_eq!(board.index_to_pos(index), (row, col));
+            }
+        }
     }
 }

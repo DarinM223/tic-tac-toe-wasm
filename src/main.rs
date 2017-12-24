@@ -45,6 +45,7 @@ fn main() {
             let response_text = format!("{:?}", response);
             js! {
                 alert(@{response_text});
+                alert(@{board.borrow().to_string()});
             }
             if let Some(resp_move) = response {
                 board.borrow_mut().apply_move(&resp_move);
@@ -54,6 +55,12 @@ fn main() {
                     .unwrap();
                 response_cell.set_text_content("O");
                 response_cell.class_list().add("o");
+            }
+            if let Some(marking) = board.borrow().has_won() {
+                let text = format!("{:?} has won!", marking);
+                js! {
+                    alert(@{text});
+                }
             }
         });
     }
