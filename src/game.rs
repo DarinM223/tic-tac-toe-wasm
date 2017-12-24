@@ -74,7 +74,7 @@ impl Board {
 
         for m in moves {
             self.apply_move(&m);
-            let move_value = minimax(self, 0, opposite_marking, false);
+            let move_value = minimax_alpha_beta(self, 0, -1000, 1000, opposite_marking, false);
             self.undo_move(&m);
 
             if move_value > best {
@@ -206,7 +206,8 @@ impl Board {
     }
 }
 
-fn minimax(board: &mut Board, depth: i32, player_marking: CellMarking, is_max: bool) -> i32 {
+// Naive minimax algorithm
+pub fn minimax(board: &mut Board, depth: i32, player_marking: CellMarking, is_max: bool) -> i32 {
     if let Some(marking) = board.has_won() {
         if (player_marking == marking && !is_max) || (player_marking != marking && is_max) {
             return -10 - depth;
@@ -243,9 +244,71 @@ fn minimax(board: &mut Board, depth: i32, player_marking: CellMarking, is_max: b
     }
 }
 
+// Minimax with fail-soft alpha-beta pruning
+pub fn minimax_alpha_beta(
+    board: &mut Board,
+    depth: i32,
+    alpha: i32,
+    beta: i32,
+    player_marking: CellMarking,
+    is_max: bool,
+) -> i32 {
+    if let Some(marking) = board.has_won() {
+        if (player_marking == marking && !is_max) || (player_marking != marking && is_max) {
+            return -10 - depth;
+        }
+        return 10 - depth;
+    }
+
+    let moves = board.moves(player_marking);
+    if moves.len() == 0 {
+        return 0;
+    }
+
+    let opposite_marking = match player_marking {
+        CellMarking::X => CellMarking::O,
+        CellMarking::O => CellMarking::X,
+    };
+
+    if is_max {
+        let mut best = -1000;
+        let mut alpha = alpha;
+        for m in moves {
+            board.apply_move(&m);
+            best = cmp::max(
+                best,
+                minimax_alpha_beta(board, depth + 1, alpha, beta, opposite_marking, !is_max),
+            );
+            alpha = cmp::max(alpha, best);
+            board.undo_move(&m);
+            if beta <= alpha {
+                break;
+            }
+        }
+        best
+    } else {
+        let mut best = 1000;
+        let mut beta = beta;
+        for m in moves {
+            board.apply_move(&m);
+            best = cmp::min(
+                best,
+                minimax_alpha_beta(board, depth + 1, alpha, beta, opposite_marking, !is_max),
+            );
+            beta = cmp::min(beta, best);
+            board.undo_move(&m);
+            if beta <= alpha {
+                break;
+            }
+        }
+        best
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test::Bencher;
 
     const TEST_BOARD_ROW_SIZE: usize = 3;
     const TEST_BOARD_COL_SIZE: usize = 5;
@@ -342,5 +405,21 @@ mod tests {
                 assert_eq!(board.index_to_pos(index), (row, col));
             }
         }
+    }
+
+    #[bench]
+    fn bench_minimax(b: &mut Bencher) {
+        b.iter(|| {
+            let mut board = Board::new();
+            minimax(&mut board, 0, CellMarking::X, true)
+        });
+    }
+
+    #[bench]
+    fn bench_minimax_alpha_beta(b: &mut Bencher) {
+        b.iter(|| {
+            let mut board = Board::new();
+            minimax_alpha_beta(&mut board, 0, -1000, 1000, CellMarking::X, true)
+        });
     }
 }

@@ -1,5 +1,8 @@
+#![feature(test)]
+
 #[macro_use]
 extern crate stdweb;
+extern crate test;
 
 #[macro_use]
 extern crate serde_derive;
