@@ -34,5 +34,5 @@ Building for a static web page:
 cargo web build --target-webasm
 ```
 
-Then copy `target/wasm32-unknown-unknown/tic_tac_toe_wasm.wasm` and `target/wasm32-unknown-unknown/tic_tac_toe_wasm.js`
+Then copy `target/wasm32-unknown-unknown/release/tic_tac_toe_wasm.wasm` and `target/wasm32-unknown-unknown/release/tic_tac_toe_wasm.js`
 into the `build/` folder.
